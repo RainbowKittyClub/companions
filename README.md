@@ -6,6 +6,7 @@ Extra features for your furry and feathered friends. No client mod required!
 
 ### Wolf sweaters!
 ![wolf sweater recipe](img/wolf_sweater_recipe.gif)
+![dyed wolf sweater recipe](img/dyed_wolf_sweater_recipe.gif)
 
 Keep your friend cozy and warm in cold weather, or just make it a fashion statement!
 Sweaters come in all 16 colors and can be combined with dye for a cute colored pattern on top of the wool color.
