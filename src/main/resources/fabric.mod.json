@@ -27,7 +27,7 @@
     "fabricloader": ">=${project.fabric_loader_version}",
     "fabric-api": "*",
     "minecraft": "${project.minecraft_version}",
-    "java": ">=25",
+    "java": ">=${project.java_version}",
     "polymer-core": "*",
     "polymer-resource-pack": "*"
   }

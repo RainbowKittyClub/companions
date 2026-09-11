@@ -1,211 +1,177 @@
 plugins {
-	id 'base'
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
-	id 'maven-publish'
-	id 'com.gradleup.shadow' version '9.6.1'
+    id 'base'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+    id 'com.gradleup.shadow' version '9.6.1'
 }
 
-java.sourceCompatibility = JavaVersion.VERSION_25
-java.targetCompatibility = JavaVersion.VERSION_25
+java.sourceCompatibility = JavaVersion.toVersion(project.java_version)
+java.targetCompatibility = JavaVersion.toVersion(project.java_version)
 
 base {
-	archivesName.set(project.mod_id)
+    archivesName.set(project.mod_id)
 }
 
 version = project.mod_version
 group = project.maven_group
 
-// Item models and equipment assets come from @Environment(CLIENT) providers, so the run has to
-// inherit the client config: it constructs a Minecraft instance, generates, and exits before the
-// window is ever usable. Its own source set keeps those client-only imports — and the generators —
-// out of this server-side mod's jar.
+// A dedicated source set keeps datagen's own imports out of this mod's jar, and lets
+// @Environment(CLIENT)-only providers (item models, equipment assets, anything needing a real
+// texture/model registry) run at all: `client = true` boots a full Minecraft client instance to
+// generate, then exits before the window is ever usable.
 fabricApi {
-	configureDataGeneration {
-		modId = project.mod_id
-		client = true
-		createSourceSet = true
-	}
+    configureDataGeneration {
+        modId = project.mod_id
+        client = true
+        createSourceSet = true
+    }
 }
 
 repositories {
-	mavenLocal()
-	maven {
-		name = 'Nucleoid'
-		url = 'https://maven.nucleoid.xyz'
-	}
+    // rkcore is not published anywhere public; it comes from `publishToMavenLocal` in its checkout.
+    mavenLocal()
+    maven {
+        name = 'Nucleoid'
+        url = 'https://maven.nucleoid.xyz'
+    }
 }
 
 configurations {
-	rkcore
-	shade
-	implementation.extendsFrom shade
+    rkcore
+    shade
+    implementation.extendsFrom shade
 }
 
-// shadowJar's own include/exclude patterns match the pre-relocation path, so they cannot express
-// "keep only these helpers". Filtering rkcore down to the two shareable packages up front is also
-// stricter: rkcore's own feature/machinery packages can never leak in, and importing one of them
-// fails to compile rather than silently bundling it.
+// Filter rkcore down to the shareable packages before shadowJar sees it, so its own feature
+// packages can never leak in and importing one fails to compile.
 tasks.register('rkcoreSharedJar', Jar) {
-	archiveBaseName = 'rkcore-shared'
-	destinationDirectory = layout.buildDirectory.dir('shade')
-	from({ configurations.rkcore.collect { zipTree(it) } }) {
-		include 'club/rainbowkitty/rkcore/common/item/**'
-		include 'club/rainbowkitty/rkcore/common/datagen/**'
-		include 'club/rainbowkitty/rkcore/common/armor/**'
-	}
+    archiveBaseName = 'rkcore-shared'
+    destinationDirectory = layout.buildDirectory.dir('shade')
+    from({ configurations.rkcore.collect { zipTree(it) } }) {
+        include 'club/rainbowkitty/rkcore/common/item/**'
+        include 'club/rainbowkitty/rkcore/common/datagen/**'
+        include 'club/rainbowkitty/rkcore/common/armor/**'
+    }
 }
 
 dependencies {
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	implementation "eu.pb4:polymer-bundled:${project.polymer_version}"
-	// Non-transitive: rkcore's POM lists all of fabric-api and Polymer, which would otherwise be
-	// bundled here too. This mod declares those itself.
-	rkcore("club.rainbowkitty.rkcore:rkcore:${project.rkcore_version}") { transitive = false }
-	shade files(tasks.named('rkcoreSharedJar'))
+    // To change the versions see the gradle.properties file
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "eu.pb4:polymer-bundled:${project.polymer_version}"
+    // Non-transitive: rkcore's POM lists all of fabric-api and Polymer, which would otherwise be
+    // bundled here too. This mod declares those itself.
+    rkcore("club.rainbowkitty.rkcore:rkcore:${project.rkcore_version}") { transitive = false }
+    shade files(tasks.named('rkcoreSharedJar'))
 }
 
 // The shaded jar is the one that gets installed, so it takes the plain name; otherwise both tasks
 // write the same path and whichever runs last silently wins.
 jar {
-	archiveClassifier.set('unshaded')
+    archiveClassifier.set('unshaded')
 }
 
 shadowJar {
-	archiveClassifier.set('')
-	configurations = [project.configurations.shade]
-	relocate 'club.rainbowkitty.rkcore.common', 'club.rainbowkitty.companions.shaded.rkcore'
+    archiveClassifier.set('')
+    configurations = [project.configurations.shade]
+    relocate 'club.rainbowkitty.rkcore.common', 'club.rainbowkitty.companions.shaded.rkcore'
 }
 
 tasks.named('assemble') {
-	dependsOn shadowJar
+    dependsOn shadowJar
 }
+
+// A check for datagen's output can't live in processResources: runDatagen needs :classes, which
+// depends on processResources, so on a fresh clone processResources always runs once before
+// runDatagen has produced anything. shadowJar has no such cycle, so it is where a clone missing
+// that output gets caught — right before the jar that would ship without models or textures.
+tasks.named('shadowJar') {
+    doFirst {
+        def generated = file('src/main/generated/assets/companions')
+        def missing = ['items/white_wolf_sweater.json', 'textures/item/white_wolf_sweater.png']
+                .collect { new File(generated, it) }
+                .findAll { !it.exists() }
+        if (!missing.isEmpty()) {
+            throw new GradleException(
+                    "Generated sweater datagen output is missing: ${missing*.name.join(', ')}. " +
+                            'Run: ./gradlew generateAssets')
+        }
+    }
+}
+
+// runServer/stopServer lifecycle, sane-defaults seeding of run/, and the optional Quilt run — all
+// generic, all driven only by gradle.properties. Delete this line and gradle/devserver.gradle to
+// fall back to Loom's bare dev server.
+apply from: 'gradle/devserver.gradle'
 
 processResources {
-	// Datagen leaves a hash cache beside its output. Loom excludes it from the `jar` task only,
-	// which shadowJar — the jar actually shipped — does not inherit, so drop it a step earlier.
-	exclude '.cache/**'
+    // Datagen leaves a hash cache beside its output; Loom excludes it from `jar` only, which
+    // shadowJar does not inherit, so drop it a step earlier.
+    exclude '.cache/**'
 
-	// Collect only simple, serializable project properties (e.g. values from gradle.properties)
-	// to avoid fingerprinting errors from complex Gradle objects.
-	def resourceProps = [:]
-	project.properties.each { k, v ->
-		if (v instanceof CharSequence || v instanceof Number || v instanceof Boolean) {
-			resourceProps[k.toString()] = v.toString()
-		}
-	}
+    // Collect only simple, serializable project properties (e.g. values from gradle.properties)
+    // to avoid fingerprinting errors from complex Gradle objects.
+    def resourceProps = [:]
+    project.properties.each { k, v ->
+        if (v instanceof CharSequence || v instanceof Number || v instanceof Boolean) {
+            resourceProps[k.toString()] = v.toString()
+        }
+    }
 
-	resourceProps.version = project.version.toString()
-	resourceProps.group = project.group.toString()
-	resourceProps.name = project.name.toString()
+    resourceProps.version = project.version.toString()
+    resourceProps.group = project.group.toString()
+    resourceProps.name = project.name.toString()
 
-	inputs.properties(resourceProps)
+    inputs.properties(resourceProps)
 
-	// Provide both flat props and a nested 'project' map for ${project.*} references
-	def expandMap = resourceProps + [project: resourceProps]
+    // Provide both flat props and a nested 'project' map for ${project.*} references
+    def expandMap = resourceProps + [project: resourceProps]
 
-	filesMatching("fabric.mod.json") {
-		expand(expandMap)
-	}
+    filesMatching(["fabric.mod.json", "*.mixins.json"]) {
+        expand(expandMap)
+    }
 }
 
-// Thin, discoverable alias: runDatagen produces every per-colour asset — models, equipment
-// assets, recipes, tags, lang, and the tinted textures (see SweaterTextureProvider) — but its
-// generic Loom-provided name doesn't say so.
-tasks.register('generateAssets') {
-	group = 'companions'
-	description = 'Regenerates every per-colour sweater asset: textures, models, equipment ' +
-			'assets, recipes, tags and lang. Run after cloning, or whenever the base art or the ' +
-			'colour list changes.'
-	dependsOn tasks.named('runDatagen')
-}
-
-// A check for datagen's output (src/main/generated) can't live in processResources: runDatagen
-// needs :classes, which depends on processResources, so on a truly fresh clone processResources
-// always runs once *before* runDatagen has produced anything. shadowJar has no such cycle —
-// nothing requires it to build runDatagen's classpath — so it is where a genuinely
-// missing-datagen-output clone gets caught, right before the jar that would otherwise ship
-// without models or textures is written.
-tasks.named('shadowJar') {
-	doFirst {
-		def generated = file('src/main/generated/assets/companions')
-		def missing = ['items/white_wolf_sweater.json', 'textures/item/white_wolf_sweater.png']
-				.collect { new File(generated, it) }
-				.findAll { !it.exists() }
-		if (!missing.isEmpty()) {
-			throw new GradleException(
-					"Generated sweater datagen output is missing: ${missing*.name.join(', ')}. " +
-							'Run: ./gradlew generateAssets')
-		}
-	}
-}
-
+// Loom reads the un-expanded template at configure time, so validate the generated file instead.
 tasks.register('validateFabricModJson') {
-	group = 'verification'
-	description = 'Validate that the generated build/resources/main/fabric.mod.json is valid JSON.'
+    group = 'verification'
+    description = 'Validate that the generated build/resources/main/fabric.mod.json is valid JSON.'
 
-	doLast {
-		def jsonFile = file("${buildDir}/resources/main/fabric.mod.json")
-		if (!jsonFile.exists()) {
-			throw new GradleException("fabric.mod.json not found at: ${jsonFile}. Ensure resources are processed.")
-		}
-		try {
-			new groovy.json.JsonSlurper().parse(jsonFile)
-			logger.lifecycle("fabric.mod.json is valid JSON: ${jsonFile}")
-		} catch (Exception e) {
-			throw new GradleException("fabric.mod.json is not valid JSON: ${e.message}", e)
-		}
-	}
+    doLast {
+        def jsonFile = file("${buildDir}/resources/main/fabric.mod.json")
+        if (!jsonFile.exists()) {
+            throw new GradleException("fabric.mod.json not found at: ${jsonFile}. Ensure resources are processed.")
+        }
+        try {
+            new groovy.json.JsonSlurper().parse(jsonFile)
+            logger.lifecycle("fabric.mod.json is valid JSON: ${jsonFile}")
+        } catch (Exception e) {
+            throw new GradleException("fabric.mod.json is not valid JSON: ${e.message}", e)
+        }
+    }
 }
 
 tasks.named('processResources') {
-	finalizedBy tasks.named('validateFabricModJson')
+    finalizedBy tasks.named('validateFabricModJson')
 }
 
-tasks.register('stopServer') {
-	group = 'fabric'
-	description = 'Stops the dev server started by runServer, if one is running.'
-
-	// Loom writes one launch config per project, so its path identifies this checkout's dev server
-	// and nothing else. Matching on the main class or on 'runServer' would also match a sibling
-	// mod's server in the same workspace, and matching on the port would miss a reconfigured one.
-	def marker = file('.gradle/loom-cache/launch.cfg').absolutePath
-
-	doLast {
-		def running = []
-		ProcessHandle.allProcesses().forEach { handle ->
-			if (handle.info().commandLine().orElse('').contains(marker)) {
-				running << handle
-			}
-		}
-		if (running.isEmpty()) {
-			logger.lifecycle('No dev server running.')
-			return
-		}
-		// Asked to stop rather than killed: the server traps the signal and saves the world on its
-		// way out, which a dev world that has been built in still deserves.
-		running.each { it.destroy() }
-		running.each { handle ->
-			try {
-				handle.onExit().get(30, java.util.concurrent.TimeUnit.SECONDS)
-				logger.lifecycle("Stopped dev server (pid ${handle.pid()}).")
-			} catch (java.util.concurrent.TimeoutException ignored) {
-				throw new GradleException(
-						"Dev server (pid ${handle.pid()}) ignored the stop request for 30s.")
-			}
-		}
-	}
+// Thin, discoverable alias: Loom's task name for datagen doesn't say what it produces, and its
+// output isn't wired into `build` since a fresh clone needs it generated at least once by hand.
+tasks.register('generateAssets') {
+    group = 'fabric'
+    description = 'Regenerates this mod\'s datagen output (models, recipes, tags, lang, etc). ' +
+            'Run after cloning, or whenever a datagen provider or its inputs change.'
+    dependsOn tasks.named('runDatagen')
 }
 
 tasks.withType(JavaCompile).configureEach {
-	options.encoding = "UTF-8"
-	options.release = 25
+    options.encoding = "UTF-8"
+    options.release = project.java_version.toInteger()
 }
 
 java {
-	withSourcesJar()
+    withSourcesJar()
 }
 
 // Ordering only, not a real dependency: generateAssets is deliberately not wired into build (see
@@ -213,18 +179,18 @@ java {
 // Gradle's task-graph validation requires this declared whenever both tasks are requested in the
 // same invocation (e.g. `./gradlew generateAssets build`).
 tasks.named('sourcesJar') {
-	mustRunAfter tasks.named('runDatagen')
+    mustRunAfter tasks.named('runDatagen')
 }
 
 publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			from components.java
-		}
-	}
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
 
-	repositories {
-		// uncomment to publish to the local maven
-		// mavenLocal()
-	}
+    repositories {
+        // uncomment to publish to the local maven
+        // mavenLocal()
+    }
 }
