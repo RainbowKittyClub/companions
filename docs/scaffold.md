@@ -1,20 +1,20 @@
 # Companions: item-registration framework + first sweaters
 
-Small reusable item-registration helper in `rkcore`, proven by one real feature: wolf-worn
+Small reusable item-registration helper in `kalic0re`, proven by one real feature: wolf-worn
 "sweater" items coexisting with vanilla `minecraft:wolf_armor`, shipped from new standalone mod at
 `rkc/mods/companions`. API claims here checked against `libs/decompiledjava/minecraft-26.2/` and
 Polymer checkout at `libs/polymer/`, not memory; citations are `File.java:line` for recheck.
 
 Two requirements shape whole build order:
 
-- **`rkcore` keeps one canonical registration helper, `companions` reuses it** — not
+- **`kalic0re` keeps one canonical registration helper, `companions` reuses it** — not
   hand-duplicated copy. Real code sharing via build tooling, chosen over duplicating ~10-line
   helper or optional-dependency-with-inline-fallback split.
-- **`companions` installs completely standalone** — dropped alone into mods folder with no rkcore
-  jar, and even with rkcore installed alongside, none of rkcore's other features (hover
+- **`companions` installs completely standalone** — dropped alone into mods folder with no kalic0re
+  jar, and even with kalic0re installed alongside, none of kalic0re's other features (hover
   labels, its mixins, its own entrypoint) may activate as side effect.
 
-Stage order: S1 (rkcore-side helper) unblocks everything. S2 and S3 (bare scaffold, then shaded
+Stage order: S1 (kalic0re-side helper) unblocks everything. S2 and S3 (bare scaffold, then shaded
 dependency) both must land before any real item code compiles against shared class.
 S4–S6 (item, stats, recipe), S8 (freeze immunity) and S9 (per-colour variants) buildable
 in any order once S3 lands; S9 reverses S4's single-item decision. S7 (standalone-install
@@ -26,15 +26,15 @@ proof plus docs) is last, makes feature complete. Stage numbers record order sta
 ## Findings that reshape the work
 
 **Normal Fabric mod dependency or Loom's `include()` both fail standalone requirement.**
-`modImplementation` + `fabric.mod.json` `"depends"` entry forces rkcore's jar present
+`modImplementation` + `fabric.mod.json` `"depends"` entry forces kalic0re's jar present
 wherever `companions` installed. Loom's Jar-in-Jar `include()` embeds whole nested jar,
 `fabric.mod.json` and all, and Fabric Loader loads it as second full mod (entrypoint, mixins,
-everything). Fix: Gradle Shadow-plugin relocation (S3): `companions` copies just rkcore's
+everything). Fix: Gradle Shadow-plugin relocation (S3): `companions` copies just kalic0re's
 `ItemRegistration` bytecode into its own jar under private package name, so logic has one
 canonical source with no runtime dependency on second jar. `com.gradleup.shadow:9.6.1` can
 relocate and merge specific classes without pulling in dependency's Fabric metadata, which
-`include()` cannot. Relocating also means if rkcore *is* separately installed, no two jars both
-claim to define `club.rainbowkitty.rkcore.common.item.ItemRegistration` in shared classloader.
+`include()` cannot. Relocating also means if kalic0re *is* separately installed, no two jars both
+claim to define `club.rainbowkitty.kalic0re.common.item.ItemRegistration` in shared classloader.
 
 **Vanilla wolf armor needs no custom `Item` behaviour, and its convenience builder doesn't fit our
 stats.** `Item.Properties.wolfArmor(ArmorMaterial)` (`Item.java:558-574`) hardcodes
@@ -68,16 +68,16 @@ ones before it. In-world checks run on mod's own dev server
 (`scripts/devserver.sh rkc/mods/companions ...`); S7 additionally assembles standalone scratch
 server, since relocated bytecode never runs under `runServer`.
 
-## S1 — rkcore: the reusable registration helper — **done**
+## S1 — kalic0re: the reusable registration helper — **done**
 
-**Build.** New `common/item/ItemRegistration.java` in rkcore (package mirrors `common/label/`,
+**Build.** New `common/item/ItemRegistration.java` in kalic0re (package mirrors `common/label/`,
 `common/rule/`). One static method `register(String namespace, String path,
 Function<ResourceKey<Item>, T> factory)` — namespace is explicit parameter because real
-caller lives in different mod. Publish locally: `cd rkc/mods/rkcore && ./gradlew
-publishToMavenLocal` (writes `club.rainbowkitty.rkcore:rkcore:0.1.0` to `~/.m2`, regardless of
+caller lives in different mod. Publish locally: `cd rkc/mods/kalic0re && ./gradlew
+publishToMavenLocal` (writes `club.rainbowkitty.kalic0re:kalic0re:0.1.0` to `~/.m2`, regardless of
 commented `mavenLocal()` line under `publishing.repositories`).
 
-**Done when.** `~/.m2/repository/club/rainbowkitty/rkcore/rkcore/0.1.0/` contains jar and POM
+**Done when.** `~/.m2/repository/club/rainbowkitty/kalic0re/kalic0re/0.1.0/` contains jar and POM
 after `./gradlew build && ./gradlew publishToMavenLocal`.
 
 ### As built
@@ -87,8 +87,8 @@ held — `Registry.register` (`Registry.java:117`), `ResourceKey.create` (`Resou
 `Identifier.fromNamespaceAndPath` (`Identifier.java:42`); `BuiltInRegistries.ITEM` is
 `DefaultedRegistry<Item>` (`BuiltInRegistries.java:189`).
 
-Publication is four artifacts, not two — jar, `-sources.jar` (rkcore sets `withSourcesJar()`),
-`.pom`, `.module`. `unzip -l` on jar shows it carries rkcore's `fabric.mod.json` alongside its
+Publication is four artifacts, not two — jar, `-sources.jar` (kalic0re sets `withSourcesJar()`),
+`.pom`, `.module`. `unzip -l` on jar shows it carries kalic0re's `fabric.mod.json` alongside its
 classes — concrete form of problem S3 exists to solve. Linted clean.
 
 ## S2 — Scaffold `companions` as a bare, buildable mod — **done**
@@ -102,10 +102,10 @@ classes — concrete form of problem S3 exists to solve. Linted clean.
 | `gradle.properties` | mod_name/description/authors; `maven_group = club.rainbowkitty.companions`; `mod_id = companions`; `entrypoint = club.rainbowkitty.companions.Main`; drop `bil_version` |
 | `CHANGEME.java` | → `club.rainbowkitty.companions.Main` |
 | `changeme.mixins.json` | delete — no mixins needed |
-| `fabric.mod.json` | drop `"mixins"` array; no `"rkcore"` entry in `"depends"` |
+| `fabric.mod.json` | drop `"mixins"` array; no `"kalic0re"` entry in `"depends"` |
 | `build.gradle` | drop bil's `mavenLocal()`/Modrinth/Sponge repos, bil dependency, `fabric-permissions-api` JiJ line |
 
-No rkcore wiring yet — that is S3.
+No kalic0re wiring yet — that is S3.
 
 **Done when.** `cd rkc/mods/companions && ./gradlew build` succeeds, and `scripts/devserver.sh
 rkc/mods/companions restart` boots with 0 `Mixin apply failed`/`InvalidInjectionException`.
@@ -128,46 +128,46 @@ Rename table applied as written. Three things plan missed:
 
 Boot clean — `companions 0.1.0` in mod list, `Companions loaded!`, 0 mixin failures.
 
-## S3 — Shadow-relocated rkcore dependency — **done**
+## S3 — Shadow-relocated kalic0re dependency — **done**
 
 **Build.** Add `com.gradleup.shadow` 9.6.1 and private `shade` configuration
 (`implementation.extendsFrom shade`) to `companions/build.gradle`. `shadowJar` takes plain
-archive name and relocates `club.rainbowkitty.rkcore.common.item` into private package.
+archive name and relocates `club.rainbowkitty.kalic0re.common.item` into private package.
 
-**Flagged unknown:** whether source imports `ItemRegistration` under original rkcore package
+**Flagged unknown:** whether source imports `ItemRegistration` under original kalic0re package
 name or relocated name. Resolve by building and reading compiler/runtime behaviour.
 
 **Done when.** `./gradlew build` succeeds, and `unzip -l build/libs/companions-*.jar` shows
 `companions`' own classes plus exactly one relocated `ItemRegistration` class, and **nothing** from
-rkcore's `Main`, mixins, or `fabric.mod.json`.
+kalic0re's `Main`, mixins, or `fabric.mod.json`.
 
 ### As built
 
 `com.gradleup.shadow` 9.6.1 runs against Gradle 9.5.1 + Loom 1.17.19 with no warnings. Three things
 had to change:
 
-- **Dependency must be non-transitive.** `shade "…:rkcore:0.1.0"` produced 10 MB, 5332-entry
-  jar carrying all of fabric-api and Polymer, because rkcore publishes `from components.java` and
+- **Dependency must be non-transitive.** `shade "…:kalic0re:0.1.0"` produced 10 MB, 5332-entry
+  jar carrying all of fabric-api and Polymer, because kalic0re publishes `from components.java` and
   its `implementation` deps land in POM as runtime scope. Fixed with `{ transitive = false }`.
 - **Shadow's `include`/`exclude` cannot express "keep one class"** — patterns match
-  pre-relocation path and also govern this mod's own classes. Instead `rkcoreSharedJar` task
-  filters resolved artifact down to `club/rainbowkitty/rkcore/common/item/**` before Shadow sees
-  it — stricter than pattern list, needs its own `rkcore` configuration registered *above*
+  pre-relocation path and also govern this mod's own classes. Instead `kalic0reSharedJar` task
+  filters resolved artifact down to `club/rainbowkitty/kalic0re/common/item/**` before Shadow sees
+  it — stricter than pattern list, needs its own `kalic0re` configuration registered *above*
   `dependencies` block.
 - **`jar` and `shadowJar` both defaulted to `companions-0.1.0.jar`** with no overlap warning. `jar`
   now carries `unshaded` classifier, so plain name is unambiguously the shaded, installable
   artifact.
 
-**Flagged unknown, resolved:** source imports **original** rkcore package name. Probe class
-importing `club.rainbowkitty.rkcore.common.item.ItemRegistration` compiled (unrelocated class on
+**Flagged unknown, resolved:** source imports **original** kalic0re package name. Probe class
+importing `club.rainbowkitty.kalic0re.common.item.ItemRegistration` compiled (unrelocated class on
 compile classpath via `implementation.extendsFrom shade`), and `javap` on shaded jar showed
 Shadow rewrites references in this mod's own bytecode too. Corollary: because `shade` feeds
 `implementation`, `runServer` runs against **unrelocated** class — only real jar install
 exercises relocation.
 
 **Amended after S4:** shared package now holds `PolymerModelItem` too, so relocation target
-renamed to `club.rainbowkitty.companions.shaded.rkcore.item` (old
-`…shaded.itemregistration` had become misnomer). `rkcoreSharedJar` filter needed no change —
+renamed to `club.rainbowkitty.companions.shaded.kalic0re.item` (old
+`…shaded.itemregistration` had become misnomer). `kalic0reSharedJar` filter needed no change —
 payoff of filtering by package. `javap` on `WolfSweater` confirms Shadow rewrites
 `new`/`invokespecial` for relocated superclass and synthetic lambda's return type.
 
@@ -218,9 +218,9 @@ string (string logs `Failed to decode value ... Not a list` and wolf silently di
 and with **no players online spawn chunks not loaded**, so summoned entities unload same
 tick — `forceload add` around spawn fixes it.
 
-**Amended before S5: `PolymerItem` shim generalized into rkcore.** Its whole body was
+**Amended before S5: `PolymerItem` shim generalized into kalic0re.** Its whole body was
 stock Polymer pattern — vanilla fallback, custom model id — so it became
-`rkcore/common/item/PolymerModelItem`, instantiated with fallback and model as constructor
+`kalic0re/common/item/PolymerModelItem`, instantiated with fallback and model as constructor
 arguments. companions is down to two Java files. Still one-caller abstraction today; taken on
 expectation that more items are coming workspace-wide.
 
@@ -409,21 +409,21 @@ item reported as "Red Wolf Sweater".
 
 ## S7 — Standalone-install proof + docs — **done**
 
-**Build.** Copy only shaded `companions-<version>.jar` into scratch mods folder with no rkcore
-jar, boot it, confirm item registers/crafts/equips. Then add rkcore's jar and confirm both run
-side by side with no duplicate-class or duplicate-mixin warnings. Add `rkc/mods/companions` row to
-`CLAUDE.md`'s mods table, a "Sharing code between mods" note (relocation, why, and that rkcore must
-be republished after any `common/item` change), and document `./gradlew generateAssets` as
-required post-clone step.
+**Build.** Copy only shaded `companions-<version>.jar` into scratch mods folder with no kalic0re
+jar, boot it, confirm item registers/crafts/equips. Then add kalic0re's jar and confirm both run
+side by side with no duplicate-class or duplicate-mixin warnings. Add `rkc/mods/companions`
+row to `CLAUDE.md`'s mods table, a "Sharing code between mods" note (relocation, why, and
+that kalic0re must be republished after any `common/item` change), and document
+`./gradlew generateAssets` as required post-clone step.
 
 **Done when.** Both boots succeed cleanly and `CLAUDE.md` reflects new mod. Live deploy from
-here means shipping only `companions-<version>.jar` unless rkcore's own features also wanted.
+here means shipping only `companions-<version>.jar` unless kalic0re's own features also wanted.
 
 ### As built
 
 Both boots passed; `CLAUDE.md` updated. This stage is first and only thing that ever ran the
 relocated bytecode — `runServer` resolves shared classes from compile classpath under their
-original rkcore package names.
+original kalic0re package names.
 
 - **Scratch server had to be assembled, not just populated.** No Fabric server in this
   workspace outside Loom's dev environment, and sandbox cannot reach `maven.fabricmc.net`. The
@@ -435,10 +435,10 @@ original rkcore package names.
   answering `Unknown item` is what makes other 16 mean something). Crafting proved with
   crafter: six `red_wool` → one `companions:red_wolf_sweater`; re-run with `blue_dye` →
   `minecraft:dyed_color: 3949738`, vanilla blue literal.
-- **Side by side.** Adding `rkcore-0.1.0.jar`: 54 mods, both entrypoints load, 0 mixin failures,
+- **Side by side.** Adding `kalic0re-0.1.0.jar`: 54 mods, both entrypoints load, 0 mixin failures,
   0 ERROR lines. The two jars define
-  `club/rainbowkitty/rkcore/common/item/ItemRegistration.class` and
-  `club/rainbowkitty/companions/shaded/rkcore/item/ItemRegistration.class` respectively — nothing
+  `club/rainbowkitty/kalic0re/common/item/ItemRegistration.class` and
+  `club/rainbowkitty/companions/shaded/kalic0re/item/ItemRegistration.class` respectively — nothing
   for classloader to disagree about.
 - **Two scratch-server traps:** `level-type=minecraft:flat` with `generator-settings={}` builds
   world with no layers (`No key layers in MapLike[{}]`), so wolves fell out of world; and
