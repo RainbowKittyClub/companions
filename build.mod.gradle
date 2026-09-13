@@ -1,0 +1,20 @@
+// companions-specific build logic. Applied last by the shared gradle/build.gradle, so it can
+// reconfigure anything that file set up.
+
+// A check for datagen's output can't live in processResources: runDatagen needs :classes, which
+// depends on processResources, so on a fresh clone processResources always runs once before
+// runDatagen has produced anything. shadowJar has no such cycle, so it is where a clone missing
+// that output gets caught — right before the jar that would ship without models or textures.
+tasks.named('shadowJar') {
+	doFirst {
+		def generated = file('src/main/generated/assets/companions')
+		def missing = ['items/white_wolf_sweater.json', 'textures/item/white_wolf_sweater.png']
+				.collect { new File(generated, it) }
+				.findAll { !it.exists() }
+		if (!missing.isEmpty()) {
+			throw new GradleException(
+					"Generated sweater datagen output is missing: ${missing*.name.join(', ')}. " +
+							'Run: ./gradlew generateAssets')
+		}
+	}
+}
