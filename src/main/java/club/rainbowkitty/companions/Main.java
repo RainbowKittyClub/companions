@@ -4,7 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import club.rainbowkitty.rkcore.common.armor.ArmorPolymerSupport;
+import club.rainbowkitty.kalic0re.common.armor.ArmorPolymerSupport;
 
 /** Mod entrypoint. **/
 public class Main implements ModInitializer {

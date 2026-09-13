@@ -9,8 +9,8 @@ import net.minecraft.world.item.equipment.ArmorType;
 
 import club.rainbowkitty.companions.Main;
 import club.rainbowkitty.companions.WolfSweater;
-import club.rainbowkitty.rkcore.common.armor.ArmorLayerTarget;
-import club.rainbowkitty.rkcore.common.armor.datagen.ArmorArt;
+import club.rainbowkitty.kalic0re.common.armor.ArmorLayerTarget;
+import club.rainbowkitty.kalic0re.common.armor.datagen.ArmorArt;
 
 /**
  * Base art for every colour: one sweater drawing, tinted sixteen ways. Colours come straight from

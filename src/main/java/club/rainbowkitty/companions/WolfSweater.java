@@ -15,10 +15,10 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.equipment.ArmorType;
 
-import club.rainbowkitty.rkcore.common.armor.ArmorLayer;
-import club.rainbowkitty.rkcore.common.armor.ArmorLayerTarget;
-import club.rainbowkitty.rkcore.common.armor.ArmorRegistration;
-import club.rainbowkitty.rkcore.common.armor.ArmorSet;
+import club.rainbowkitty.kalic0re.common.armor.ArmorLayer;
+import club.rainbowkitty.kalic0re.common.armor.ArmorLayerTarget;
+import club.rainbowkitty.kalic0re.common.armor.ArmorRegistration;
+import club.rainbowkitty.kalic0re.common.armor.ArmorSet;
 
 /**
  * Wolf-worn sweaters, registered alongside vanilla wolf armor — one item per vanilla dye colour.
