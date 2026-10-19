@@ -2,6 +2,9 @@ package club.rainbowkitty.companions.datagen;
 
 import java.util.concurrent.CompletableFuture;
 
+import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
+import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider;
+
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
@@ -9,9 +12,6 @@ import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-
-import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
-import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider;
 
 import club.rainbowkitty.companions.WolfSweater;
 
@@ -25,7 +25,8 @@ public final class SweaterRecipeProvider extends FabricRecipeProvider {
     }
 
     @Override
-    protected RecipeProvider createRecipeProvider(HolderLookup.Provider registries, RecipeOutput output) {
+    protected RecipeProvider createRecipeProvider(HolderLookup.Provider registries,
+            RecipeOutput output) {
         return new RecipeProvider(registries, output) {
             @Override
             public void buildRecipes() {
