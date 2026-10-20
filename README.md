@@ -22,7 +22,3 @@ They don't protect as well as armadillo scute armor, but they protect from freez
 Download the .jar from [releases](releases/latest) and drop into your mods folder.
 Only works on Fabric, and requires [Polymer](https://modrinth.com/mod/polymer).
 The mod will not work on vanilla clients without Polymer's resource pack hosting enabled.
-
-## Build
-
-See [`docs/BUILDING.md`](docs/BUILDING.md).
