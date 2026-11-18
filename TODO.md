@@ -1,0 +1,1 @@
+- investigate animal pathfinding (why do they crowd to the same areas, especially trap doors?)
